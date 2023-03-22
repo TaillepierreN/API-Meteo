@@ -4,7 +4,8 @@ using UnityEngine;
 using UnityEngine.Networking;
 using UnityEngine.UI;
 
-[System.Serializable] struct Parameter
+[System.Serializable]
+struct Parameter
 {
     public string name;
     public string value;
@@ -12,18 +13,25 @@ using UnityEngine.UI;
 
 public class APIManager : MonoBehaviour
 {
-    [SerializeField]string _endpoint;
-    [SerializeField]List<Parameter> _parameters;
-    string queryString;
+    [SerializeField] string _endpoint;
+    [SerializeField] List<Parameter> _parameters;
+    Color lerpedColor;
     Color newColor;
     [SerializeField] MeshRenderer sphereMat;
     [SerializeField] Image button;
+    [SerializeField] Light lumiere;
+    [SerializeField] ParticleSystem particle;
+    [SerializeField] List<Material> skyboxes;
     // Start is called before the first frame update
     void Start()
     {
 
     }
 
+    private void Update()
+    {
+
+    }
 
     public void CallURL()
     {
@@ -34,12 +42,15 @@ public class APIManager : MonoBehaviour
         // {
         //     queryString.Remove(queryString.Length-1);
         // }
+        string queryString = "";
+
         for (int i = 0; i < _parameters.Count; i++)
         {
             if (i == 0)
             {
                 queryString += "?";
-            } else 
+            }
+            else
             {
                 queryString += "&";
             }
@@ -55,19 +66,33 @@ public class APIManager : MonoBehaviour
         using (UnityWebRequest webRequest = UnityWebRequest.Get(uri))
         {
             yield return webRequest.SendWebRequest();
-            if(webRequest.result != UnityWebRequest.Result.Success)
+            if (webRequest.result != UnityWebRequest.Result.Success)
             {
                 Debug.Log("Il y a un problème de connexion");
-            } else
+            }
+            else
             {
-                HandleResponse(webRequest);
+                HandleMeteoResponse(webRequest);
             }
         }
     }
-    void HandleResponse(UnityWebRequest webRequest){
+    void HandleResponse(UnityWebRequest webRequest)
+    {
         Debug.Log(webRequest.downloadHandler.text);
+    }
+    void HandleColorResponse(UnityWebRequest webRequest)
+    {
         ColorUtility.TryParseHtmlString(webRequest.downloadHandler.text, out newColor);
         sphereMat.material.color = newColor;
         button.color = newColor;
+    }
+    void HandleMeteoResponse(UnityWebRequest webRequest)
+    {
+        var apiresponsedata = JsonUtility.FromJson<APIResponseData>(webRequest.downloadHandler.text);
+        Debug.Log("la température est de : " + apiresponsedata.current_weather.temperature + "C");
+        lerpedColor = Color.Lerp(Color.cyan, Color.red, (apiresponsedata.current_weather.temperature * 100 / 40) / 100);
+        lumiere.color = lerpedColor;
+        particle.startSpeed = apiresponsedata.current_weather.windspeed;
+        RenderSettings.skybox = skyboxes[apiresponsedata.current_weather.weathercode];
     }
 }
